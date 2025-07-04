@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Duplicate Word Highlighter & Formatter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #editableInput {
+      width: 100%;
+      height: 200px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      outline: none;
+      font-size: 14px;
+    }
+    .exception-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .exception-box input {
+      flex: 1;
+      padding: 6px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      margin: 5px 5px 5px 0;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 5px;
+    }
+    #copyStatus {
+      margin-left: 10px;
+      color: green;
+      font-weight: bold;
+    }
+    #stats {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🎨 Highlight Duplicates + Customize Output Format</h2>
+
+  <div id="editableInput" contenteditable="true" placeholder="Paste or type here...">Maruf Maruf Asif Maruf Asif Rakib</div>
+
+  <h3>❗ Exception Words (Will Not Be Removed)</h3>
+  <div id="exceptionList"></div>
+  <button onclick="addExceptionBox()">+ Add Exception</button>
+
+  <br><br>
+  <button onclick="highlightAndCount()">🔍 Highlight Duplicates</button>
+  <button onclick="removeDuplicates()">🧼 Remove Duplicates</button>
+
+  <div id="stats"></div>
+
+  <h3>🛠 Output Settings</h3>
+  Columns: <input type="number" id="columnCount" value="1" min="1" max="50">
+
+  <h3>✅ Cleaned & Formatted Output:</h3>
+  <textarea id="output" readonly></textarea>
+  <button onclick="copyOutput()">📋 Copy</button>
+  <span id="copyStatus"></span>
+
+  <script>
+    function addExceptionBox(value = '') {
+      const div = document.createElement("div");
+      div.className = "exception-box";
+      div.innerHTML = `
+        <input type="text" value="${value}" placeholder="e.g. Maruf">
+        <button onclick="this.parentElement.remove()">❌</button>
+      `;
+      document.getElementById("exceptionList").appendChild(div);
+    }
+
+    function getExceptions() {
+      return Array.from(document.querySelectorAll("#exceptionList input"))
+        .map(e => e.value.trim())
+        .filter(Boolean);
+    }
+
+    function generateColor(index) {
+      const colors = [
+        "#ffd1dc", "#d1e7ff", "#d1ffd6", "#fffac8", "#ffdfba", "#e6ccff",
+        "#ffb3ba", "#bae1ff", "#baffc9", "#ffffba", "#ffb347", "#e3f2fd"
+      ];
+      return colors[index % colors.length];
+    }
+
+    function highlightAndCount() {
+      const rawText = document.getElementById("editableInput").innerText;
+      const exceptions = getExceptions();
+      const words = rawText.match(/\S+/g) || [];
+      const map = {}, final = [];
+
+      words.forEach(word => {
+        const w = word.trim();
+        map[w] = (map[w] || 0) + 1;
+      });
+
+      const duplicateWords = Object.keys(map).filter(w => map[w] > 1 && !exceptions.includes(w));
+      const colorMap = {};
+      duplicateWords.forEach((word, i) => {
+        colorMap[word] = generateColor(i);
+      });
+
+      let duplicateCount = 0;
+
+      words.forEach(word => {
+        if (map[word] > 1 && !exceptions.includes(word)) {
+          final.push(`<span style="background-color:${colorMap[word]}; font-weight:bold;">${word}</span>`);
+          duplicateCount++;
+        } else {
+          final.push(word);
+        }
+      });
+
+      document.getElementById("editableInput").innerHTML = final.join(' ').replace(/\n/g, '<br>');
+
+      document.getElementById("stats").innerText =
+        `🔢 Total Words: ${words.length} | 🧩 Unique: ${Object.keys(map).length} | ⚠️ Duplicates: ${duplicateCount}`;
+    }
+
+    function removeDuplicates() {
+      const rawText = document.getElementById("editableInput").innerText;
+      const exceptions = getExceptions();
+      const columnCount = parseInt(document.getElementById("columnCount").value) || 1;
+
+      const words = rawText.match(/\S+/g) || [];
+      const seen = new Set();
+      const result = [];
+
+      for (let word of words) {
+        if (!seen.has(word) || exceptions.includes(word)) {
+          result.push(word);
+          seen.add(word);
+        }
+      }
+
+      let formatted = '';
+      for (let i = 0; i < result.length; i++) {
+        formatted += result[i] + '\t';
+        if ((i + 1) % columnCount === 0) formatted += '\n';
+      }
+
+      document.getElementById("output").value = formatted.trim();
+    }
+
+    function copyOutput() {
+      const text = document.getElementById("output").value;
+      navigator.clipboard.writeText(text).then(() => {
+        const status = document.getElementById("copyStatus");
+        status.textContent = "Copied!";
+        setTimeout(() => status.textContent = "", 2000);
+      });
+    }
+
+    window.onload = () => addExceptionBox();
+  </script>
+
+</body>
+</html>
